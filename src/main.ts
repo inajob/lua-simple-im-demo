@@ -3,7 +3,7 @@ import { LuaFactory } from 'wasmoon'
 import {dict2} from './dict2.ts'
 
 let gctx:CanvasRenderingContext2D | null = null;
-let luaKeydown: (k:string) => Promise<void> |null;
+let luaKeydown: (k:number ,c:string) => Promise<void> |null;
 
 (async () => {
 const factory = new LuaFactory()
@@ -47,11 +47,11 @@ try {
       return exactOut.concat(out).slice(0,10)
     })
 
-    luaKeydown = async (k:string) => {
+    luaKeydown = async (k:number ,c:string) => {
       const draw = lua.global.get('draw')
       draw()
-      const onKeyHandler = lua.global.get('onKeyHandler')
-      onKeyHandler(k)
+      const onKeyHandler = lua.global.get('keydown')
+      onKeyHandler(k, c)
     }
     // Run a lua string
     await lua.doString(`
@@ -62,6 +62,7 @@ try {
     lines[#lines + 1] = "日本語 テスト"
     x = 1 -- cursor x
     y = 1 -- cursor y
+    fontHeight = 16
 
     function subChar(s, start, e)
       local counter = 1
@@ -107,7 +108,7 @@ try {
           local uc = utf8.char(c)
           if i == y and j == x then
             color(0,0,0)
-            fillrect(offset + px, py, 1, 12)
+            fillrect(offset + px, py, 1, fontHeight)
             cx = px
             cy = py
           end
@@ -119,12 +120,12 @@ try {
         if i == y and j == x then
           -- draw cursor
           color(0,0,0)
-          fillrect(offset + px, py, 1, 12)
+          fillrect(offset + px, py, 1, fontHeight)
           cx = px
           cy = py
         end
 
-        py = py + 12
+        py = py + fontHeight
       end
 
       if setPos then
@@ -134,16 +135,16 @@ try {
 
     draw()
 
-    function onKeyHandler(k)
-      debug("keydown: " .. k)
-      local key = k
-      if key == "Enter" then
+    function keydown(k, c)
+      debug("keydown: " .. k .. "," .. c)
+      local key = c
+      if k == 13 then -- Enter
         local line = lines[y]
         lines[y] = subChar(line, 1, x)
         table.insert(lines, y + 1, subChar(line, x, utf8.len(line) + 1))
         x = 1
         y = y + 1
-      elseif key == "Backspace" then
+      elseif k == 8 then -- Backspace
         local line = lines[y]
         if x == 1 then
           if y > 1 then
@@ -158,22 +159,22 @@ try {
           lines[y] = subChar(line, 1, x - 1) .. subChar(line, x, utf8.len(line) + 1)
           x = x - 1
         end
-      elseif key == "ArrowLeft" then
+      elseif k == 37 then -- ArrowLeft
         if x > 1 then
           x = x - 1
         end
-      elseif key == "ArrowRight" then
+      elseif k == 39 then -- ArrowRight
         if x <= utf8.len(lines[y]) then
           x = x + 1
         end
-      elseif key == "ArrowUp" then
+      elseif k == 38 then -- ArrowUp
         if y > 1 then
           y = y - 1
           if x > utf8.len(lines[y]) + 1 then
             x = utf8.len(lines[y]) + 1
           end
         end
-      elseif key == "ArrowDown" then
+      elseif k == 40 then -- ArrowDown
         if y < #lines then
           y = y + 1
           if x > utf8.len(lines[y]) + 1 then
@@ -192,6 +193,7 @@ try {
     candidate = ""
     results = {}
     index = 1
+    slowSearched = false
     cx = 0
     cy = 0
 
@@ -364,44 +366,62 @@ try {
     end
     
     -- override onKeyHandler
-    onCharHandler = onKeyHandler
-    function onKeyHandler(k)
-      if k == "Enter" and string.len(candidate) > 0 then
+    onCharHandler = keydown
+    function keydown(k, c, ctrl)
+      debug("keydown k:" .. k .. ", c:" .. c)
+      -- Enter == 13
+      if k == 13 and string.len(candidate) > 0 then
         if #results == 0 then
           for i=1, #candidate do
-            onCharHandler(string.sub(candidate, i, i))
+            onCharHandler(0, string.sub(candidate, i, i))
           end
         else
           local s = results[index]
           for p, c in utf8.codes(s) do
             local uc = utf8.char(c)
-            onCharHandler(uc)
+            onCharHandler(0, uc)
           end
         end
         candidate = ""
         results = {}
         index = 1
+        slowSearched = false
         drawIm()
-      elseif k == "Backspace" and string.len(candidate) > 0 then
+      -- Backspace = 8
+      elseif k == 8 and string.len(candidate) > 0 then
         candidate = string.sub(candidate, 0, #candidate - 1)
         local hira = rome2kana(candidate)
-        results = ksearch(hira)
+        -- results = ksearch(hira)
+        results = {}
+        table.insert(results, 1, hira2kata(hira))
+        table.insert(results, 1, hira)
         drawIm()
-      elseif k == "Tab" and string.len(candidate) > 0 then
-        index = index + 1
-        if index > #results then
-          index = 1
+      -- 32 is space, not Tab
+      elseif k == 32 and string.len(candidate) > 0 then
+        if slowSearched == false then
+          local hira = rome2kana(candidate)
+          results = ksearch(hira) -- SLOW sarch
+          slowSearched = true
+          table.insert(results, 1, hira2kata(hira))
+          table.insert(results, 1, hira)
+        else
+          index = index + 1
+          if index > #results then
+            index = 1
+          end
         end
         drawIm()
-      elseif string.len(k) == 1 then
-        candidate = candidate .. k
+      elseif string.len(c) == 1 and k ~= 40 then
+        candidate = candidate .. c
         local hira = rome2kana(candidate)
-        results = ksearch(hira)
+        -- results = ksearch(hira)
+        results = {}
         table.insert(results, 1, hira2kata(hira))
         table.insert(results, 1, hira)
         drawIm()
       else
-        onCharHandler(k)
+        slowSearched = false
+        onCharHandler(k, c)
       end
     end
 
@@ -411,7 +431,7 @@ try {
       end
       local w = textwidth(candidate)
       color(0,0,255)
-      fillrect(cx, cy, w + 12, 12)
+      fillrect(cx, cy, w + fontHeight, fontHeight)
       color(255,255,255)
       text(candidate, cx, cy)
       local maxW = 0
@@ -422,18 +442,18 @@ try {
         end
       end
       color(20,20,20)
-      fillrect(cx-1, cy+12-1, maxW+2, 12*(#results)+2)
+      fillrect(cx-1, cy+fontHeight-1, maxW+2, fontHeight*(#results)+2)
       color(240,240,240)
-      fillrect(cx, cy+12, maxW, 12*(#results))
+      fillrect(cx, cy+fontHeight, maxW, fontHeight*(#results))
       for i=1, #results do
         if index == i then
           color(0,0,255)
-          fillrect(cx, i * 12 + cy, maxW, 12)
+          fillrect(cx, i * fontHeight + cy, maxW, fontHeight)
           color(255,255,255)
         else
           color(0,0,0)
         end
-        text(results[i], cx, i*12 + cy)
+        text(results[i], cx, i*fontHeight + cy)
       end
     end
 
@@ -448,7 +468,7 @@ try {
 })();
 addEventListener("keydown", (e) => {
   //console.log("keydown", e)
-  luaKeydown(e.key)
+  luaKeydown(e.keyCode, e.key)
   e.preventDefault()
 })
 addEventListener("load", () => {
