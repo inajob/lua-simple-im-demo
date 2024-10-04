@@ -1,6 +1,9 @@
 import './style.css'
 import { LuaFactory } from 'wasmoon'
-import {dict2} from './dict2.ts'
+//import {dict2} from './dict2.ts'
+import skkDic from './SKK-JISYO.S.txt?raw'
+
+let dict: { [key: string]: string[] } = {}
 
 let gctx:CanvasRenderingContext2D | null = null;
 let luaKeydown: (k:number ,c:string) => Promise<void> |null;
@@ -35,16 +38,11 @@ try {
       console.log(s)
     })
     lua.global.set('ksearch', (s:string) => {
-      let out = []
-      let exactOut = []
-      for(let i = 0; i < dict2.length; i ++){
-        if(dict2[i][1] == s){
-          exactOut.push(dict2[i][0])
-        }else if(dict2[i][1].indexOf(s) == 0){
-          out.push(dict2[i][0])
-        }
+      let out:string[] = []
+      if(s in dict){
+        out = dict[s]
       }
-      return exactOut.concat(out).slice(0,10)
+      return out
     })
 
     luaKeydown = async (k:number ,c:string) => {
@@ -103,7 +101,9 @@ try {
       for i, l in pairs(lines) do
         px = 0
         local j = 1
-        text(">", 0, py)
+        -- text(">", 0, py)
+        color(0,0,255)
+        fillrect(0, py, 3, fontHeight)
         for p, c in utf8.codes(l) do
           local uc = utf8.char(c)
           if i == y and j == x then
@@ -191,9 +191,13 @@ try {
 
     -- IME
     candidate = ""
+    nextCandidate = ""
     results = {}
     index = 1
-    slowSearched = false
+    M_DIRECT = 0
+    M_HENKAN = 1
+    M_SELECT = 2
+    imMode = M_DIRCET
     cx = 0
     cy = 0
 
@@ -351,18 +355,37 @@ try {
               index = index + 1
               goto continue
             end
+            if n == "n" then
+              out = out .. "ん"
+              index = index + 1
+              goto continue
+            end
           end
-          if n == "n" then
-            out = out .. "ん"
-            index = index + 1
-            goto continue
-          end
-          out = out .. string.sub(s, index, index)
-          index = index + 1
+          break -- can't convert hiragana
           ::continue::
         end
       end
-      return out
+      return out, index
+    end
+
+    function decide()
+      if #results == 0 then
+        for i=1, #candidate do
+          onCharHandler(0, string.sub(candidate, i, i))
+        end
+      else
+        local s = results[index]
+        for p, c in utf8.codes(s) do
+          local uc = utf8.char(c)
+          onCharHandler(0, uc)
+        end
+      end
+      candidate = nextCandidate
+      nextCandidate = ""
+      results = {}
+      index = 1
+      imMode = M_DIRECT
+      drawIm()
     end
     
     -- override onKeyHandler
@@ -371,22 +394,7 @@ try {
       debug("keydown k:" .. k .. ", c:" .. c)
       -- Enter == 13
       if k == 13 and string.len(candidate) > 0 then
-        if #results == 0 then
-          for i=1, #candidate do
-            onCharHandler(0, string.sub(candidate, i, i))
-          end
-        else
-          local s = results[index]
-          for p, c in utf8.codes(s) do
-            local uc = utf8.char(c)
-            onCharHandler(0, uc)
-          end
-        end
-        candidate = ""
-        results = {}
-        index = 1
-        slowSearched = false
-        drawIm()
+        decide()
       -- Backspace = 8
       elseif k == 8 and string.len(candidate) > 0 then
         candidate = string.sub(candidate, 0, #candidate - 1)
@@ -395,32 +403,52 @@ try {
         results = {}
         table.insert(results, 1, hira2kata(hira))
         table.insert(results, 1, hira)
+        draw()
         drawIm()
       -- 32 is space, not Tab
-      elseif k == 32 and string.len(candidate) > 0 then
-        if slowSearched == false then
-          local hira = rome2kana(candidate)
-          results = ksearch(hira) -- SLOW sarch
-          slowSearched = true
-          table.insert(results, 1, hira2kata(hira))
-          table.insert(results, 1, hira)
-        else
-          index = index + 1
-          if index > #results then
-            index = 1
-          end
+      elseif k == 32 and string.len(candidate) > 0 and imMode == M_HENKAN then
+        local hira = rome2kana(candidate)
+        results = ksearch(hira)
+        table.insert(results, 1, hira)
+        imMode = M_SELECT
+        drawIm()
+      elseif k == 32 and string.len(candidate) > 0 and imMode == M_SELECT then
+        index = index + 1
+        if index > #results then
+          index = 1
         end
         drawIm()
-      elseif string.len(c) == 1 and k ~= 40 then
+      elseif string.len(c) == 1 and k ~= 13 and k ~= 32 then
+        local triggered = (string.upper(c) == c)
+        
+        if imMode == M_SELECT then
+          decide()
+        end
+        
+        c = string.lower(c)
         candidate = candidate .. c
-        local hira = rome2kana(candidate)
-        -- results = ksearch(hira)
-        results = {}
-        table.insert(results, 1, hira2kata(hira))
-        table.insert(results, 1, hira)
+        local hira, index = rome2kana(candidate)
+        
+        if imMode == M_HENKAN and triggered then
+          debug("ksearch:" .. hira .. c)
+          results = ksearch(hira .. c) -- SLOW
+          table.insert(results, 1, hira)
+          imMode = M_SELECT
+          nextCandidate = c
+        elseif triggered or imMode == M_HENKAN then
+          imMode = M_HENKAN
+          results = {}
+          table.insert(results, 1, hira)
+        elseif not(triggered) then
+          for p, c in utf8.codes(hira) do
+            local uc = utf8.char(c)
+            onCharHandler(0, uc)
+          end
+          candidate = string.sub(candidate, index)
+        end
+        
         drawIm()
       else
-        slowSearched = false
         onCharHandler(k, c)
       end
     end
@@ -429,9 +457,10 @@ try {
       if candidate == "" then
         return
       end
+      -- local hira, index = rome2kana(candidate)
       local w = textwidth(candidate)
       color(0,0,255)
-      fillrect(cx, cy, w + fontHeight, fontHeight)
+      fillrect(cx, cy, w, fontHeight)
       color(255,255,255)
       text(candidate, cx, cy)
       local maxW = 0
@@ -468,23 +497,37 @@ try {
 })();
 addEventListener("keydown", (e) => {
   //console.log("keydown", e)
+  if(e.key == "Shift"){
+    return
+  }
   luaKeydown(e.keyCode, e.key)
   e.preventDefault()
 })
 addEventListener("load", () => {
   let canv:HTMLCanvasElement = document.createElement("canvas")
-  canv.width = 400
-  canv.height = 400
-  canv.style.width = "400px"
-  canv.style.height = "400px"
+  canv.width = 800
+  canv.height = 480
+  canv.style.width = "800px"
+  canv.style.height = "480px"
   document.getElementById("app")?.appendChild(canv)
+  
+  let lines = skkDic.split("\n").filter((l) => (l.length > 0 && l[0] != ";")).map((l) => {
+    let parts = l.split(" ")
+    let k = parts[0]
+    let v = parts[1].split("/").filter((l) => (l.length != 0))
+    return {k: k, v:v}
+  })
+  //console.log(lines)
+  lines.forEach((l) => {
+    dict[l.k] = l.v
+  })
 
   let ctx = canv.getContext("2d")
   if(ctx != null){
     gctx = ctx
     ctx.fillStyle = "white"
     ctx.textBaseline = "top"
-    ctx.fillRect(0,0,400,400)
+    ctx.fillRect(0,0,800,480)
 
     ctx.fillStyle = "black"
   }
