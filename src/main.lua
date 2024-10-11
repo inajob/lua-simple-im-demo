@@ -1,10 +1,11 @@
 -- init
 lines = {}
-lines[#lines + 1] = "Hello World"
-lines[#lines + 1] = "日本語 テスト"
+lines[#lines + 1] = {value="Hello World", dirty=true}
+lines[#lines + 1] = {value="日本語 テスト", dirty=true}
 x = 1 -- cursor x
 y = 1 -- cursor y
 fontHeight = 16
+alldirty = true
 
 function subChar(s, start, e)
     local counter = 1
@@ -39,37 +40,46 @@ function draw(setPos)
     local cx = 0
     local cy = 0
     local offset = 10
-    color(255,255,255)
-    fillrect(0,0,400,400)
+    if alldirty then
+        color(255,255,255)
+        fillrect(0,0,400,400)
+        alldirty = false
+    end
     color(0,0,0)
     for i, l in pairs(lines) do
-    px = 0
-    local j = 1
-    -- text(">", 0, py)
-    color(0,0,255)
-    fillrect(0, py, 3, fontHeight)
-    for p, c in utf8.codes(l) do
-        local uc = utf8.char(c)
-        if i == y and j == x then
-        color(0,0,0)
-        fillrect(offset + px, py, 1, fontHeight)
-        cx = px
-        cy = py
+        px = 0
+        local j = 1
+        if l["dirty"] == false then
+            goto continue
         end
-        color(0,0,0)
-        text(uc, offset + px, py)
-        px = px + textwidth(uc)
-        j = j + 1
-    end
-    if i == y and j == x then
-        -- draw cursor
-        color(0,0,0)
-        fillrect(offset + px, py, 1, fontHeight)
-        cx = px
-        cy = py
-    end
-
-    py = py + fontHeight
+        l["dirty"] = true
+        color(255,255,255)
+        fillrect(0,py,400,fontHeight)
+        -- text(">", 0, py)
+        color(0,0,255)
+        fillrect(0, py, 3, fontHeight)
+        for p, c in utf8.codes(l["value"]) do
+            local uc = utf8.char(c)
+            if i == y and j == x then
+                color(0,0,0)
+                fillrect(offset + px, py, 1, fontHeight)
+                cx = px
+                cy = py
+            end
+            color(0,0,0)
+            text(uc, offset + px, py)
+            px = px + textwidth(uc)
+            j = j + 1
+        end
+        if i == y and j == x then
+            -- draw cursor
+            color(0,0,0)
+            fillrect(offset + px, py, 1, fontHeight)
+            cx = px
+            cy = py
+        end
+        ::continue::
+        py = py + fontHeight
     end
 
     if setPos then
@@ -83,52 +93,57 @@ function keydown(k, c)
     debug("keydown: " .. k .. "," .. c)
     local key = c
     if k == 13 then -- Enter
-    local line = lines[y]
-    lines[y] = subChar(line, 1, x)
-    table.insert(lines, y + 1, subChar(line, x, utf8.len(line) + 1))
-    x = 1
-    y = y + 1
-    elseif k == 8 then -- Backspace
-    local line = lines[y]
-    if x == 1 then
-        if y > 1 then
-        local px = utf8.len(lines[y - 1]) + 1
-        lines[y - 1] = lines[y - 1] .. lines[y]
-        lines[y] = ""
-        table.remove(lines, y)
-        y = y - 1
-        x = px
-        end
-    else
-        lines[y] = subChar(line, 1, x - 1) .. subChar(line, x, utf8.len(line) + 1)
-        x = x - 1
-    end
-    elseif k == 37 then -- ArrowLeft
-    if x > 1 then
-        x = x - 1
-    end
-    elseif k == 39 then -- ArrowRight
-    if x <= utf8.len(lines[y]) then
-        x = x + 1
-    end
-    elseif k == 38 then -- ArrowUp
-    if y > 1 then
-        y = y - 1
-        if x > utf8.len(lines[y]) + 1 then
-        x = utf8.len(lines[y]) + 1
-        end
-    end
-    elseif k == 40 then -- ArrowDown
-    if y < #lines then
+        local line = lines[y]["value"]
+        lines[y]["value"] = subChar(line, 1, x)
+        lines[y]["dirty"] = true
+        table.insert(lines, y + 1, {
+            value = subChar(line, x, utf8.len(line) + 1),
+            dirty=true
+        })
+        x = 1
         y = y + 1
-        if x > utf8.len(lines[y]) + 1 then
-        x = utf8.len(lines[y]) + 1
+    elseif k == 8 then -- Backspace
+        local line = lines[y]["value"]
+        lines[y]["dirty"] = true
+        if x == 1 then
+            if y > 1 then
+            local px = utf8.len(lines[y - 1]["value"]) + 1
+            lines[y - 1]["value"] = lines[y - 1]["value"] .. lines[y]["value"]
+            lines[y]["value"] = ""
+            table.remove(lines, y)
+            y = y - 1
+            x = px
+            end
+        else
+            lines[y]["value"] = subChar(line, 1, x - 1) .. subChar(line, x, utf8.len(line) + 1)
+            x = x - 1
         end
-    end
+    elseif k == 37 then -- ArrowLeft
+        if x > 1 then
+            x = x - 1
+        end
+    elseif k == 39 then -- ArrowRight
+        if x <= utf8.len(lines[y]["value"]) then
+            x = x + 1
+        end
+    elseif k == 38 then -- ArrowUp
+        if y > 1 then
+            y = y - 1
+            if x > utf8.len(lines[y]["value"]) + 1 then
+            x = utf8.len(lines[y]["value"]) + 1
+            end
+        end
+    elseif k == 40 then -- ArrowDown
+        if y < #lines then
+            y = y + 1
+            if x > utf8.len(lines[y]["value"]) + 1 then
+            x = utf8.len(lines[y]["value"]) + 1
+            end
+        end
     elseif string.len(key) == 1 or utf8.len(key) == 1 then
-    local line = lines[y]
-    lines[y] = insertChar(line, x, key)
-    x = x + 1
+        local line = lines[y]
+        lines[y]["value"] = insertChar(line["value"], x, key)
+        x = x + 1
     end
     draw(setPos)
 end
@@ -313,16 +328,17 @@ function rome2kana(s)
 end
 
 function decide()
+    alldirty = true
     if #results == 0 then
-    for i=1, #candidate do
-        onCharHandler(0, string.sub(candidate, i, i))
-    end
+        for i=1, #candidate do
+            onCharHandler(0, string.sub(candidate, i, i))
+        end
     else
-    local s = results[index]
-    for p, c in utf8.codes(s) do
-        local uc = utf8.char(c)
-        onCharHandler(0, uc)
-    end
+        local s = results[index]
+        for p, c in utf8.codes(s) do
+            local uc = utf8.char(c)
+            onCharHandler(0, uc)
+        end
     end
     candidate = nextCandidate
     nextCandidate = ""
@@ -338,62 +354,63 @@ function keydown(k, c, ctrl)
     debug("keydown k:" .. k .. ", c:" .. c)
     -- Enter == 13
     if k == 13 and string.len(candidate) > 0 then
-    decide()
+        decide()
     -- Backspace = 8
     elseif k == 8 and string.len(candidate) > 0 then
-    candidate = string.sub(candidate, 0, #candidate - 1)
-    local hira = rome2kana(candidate)
-    -- results = ksearch(hira)
-    results = {}
-    table.insert(results, 1, hira2kata(hira))
-    table.insert(results, 1, hira)
-    draw()
-    drawIm()
+        candidate = string.sub(candidate, 0, #candidate - 1)
+        local hira = rome2kana(candidate)
+        -- results = ksearch(hira)
+        results = {}
+        table.insert(results, 1, hira2kata(hira))
+        table.insert(results, 1, hira)
+        alldirty = true
+        draw()
+        drawIm()
     -- 32 is space, not Tab
     elseif k == 32 and string.len(candidate) > 0 and imMode == M_HENKAN then
-    local hira = rome2kana(candidate)
-    results = ksearch(hira)
-    table.insert(results, 1, hira)
-    imMode = M_SELECT
-    drawIm()
-    elseif k == 32 and string.len(candidate) > 0 and imMode == M_SELECT then
-    index = index + 1
-    if index > #results then
-        index = 1
-    end
-    drawIm()
-    elseif string.len(c) == 1 and k ~= 13 and k ~= 32 then
-    local triggered = (string.upper(c) == c)
-    
-    if imMode == M_SELECT then
-        decide()
-    end
-    
-    c = string.lower(c)
-    candidate = candidate .. c
-    local hira, index = rome2kana(candidate)
-    
-    if imMode == M_HENKAN and triggered then
-        debug("ksearch:" .. hira .. c)
-        results = ksearch(hira .. c) -- SLOW
-        table.insert(results, 1, hira)
+        local hira = rome2kana(candidate)
+        results = ksearch(hira)
+        table.insert(results, #results + 1, hira)
         imMode = M_SELECT
-        nextCandidate = c
-    elseif triggered or imMode == M_HENKAN then
-        imMode = M_HENKAN
-        results = {}
-        table.insert(results, 1, hira)
-    elseif not(triggered) then
-        for p, c in utf8.codes(hira) do
-        local uc = utf8.char(c)
-        onCharHandler(0, uc)
+        drawIm()
+    elseif k == 32 and string.len(candidate) > 0 and imMode == M_SELECT then
+        index = index + 1
+        if index > #results then
+            index = 1
         end
-        candidate = string.sub(candidate, index)
-    end
-    
-    drawIm()
+        drawIm()
+    elseif string.len(c) == 1 and k ~= 13 and k ~= 32 then
+        local triggered = (string.upper(c) == c)
+        
+        if imMode == M_SELECT then
+            decide()
+        end
+        
+        c = string.lower(c)
+        candidate = candidate .. c
+        local hira, index = rome2kana(candidate)
+        
+        if imMode == M_HENKAN and triggered then
+            debug("ksearch:" .. hira .. c)
+            results = ksearch(hira .. c) -- SLOW
+            table.insert(results, #results + 1, hira)
+            imMode = M_SELECT
+            nextCandidate = c
+        elseif triggered or imMode == M_HENKAN then
+            imMode = M_HENKAN
+            results = {}
+            table.insert(results, 1, hira)
+        elseif not(triggered) then
+            for p, c in utf8.codes(hira) do
+            local uc = utf8.char(c)
+            onCharHandler(0, uc)
+            end
+            candidate = string.sub(candidate, index)
+        end
+        
+        drawIm()
     else
-    onCharHandler(k, c)
+        onCharHandler(k, c)
     end
 end
 

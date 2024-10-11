@@ -1,7 +1,7 @@
 import './style.css'
 import { LuaFactory } from 'wasmoon'
 //import {dict2} from './dict2.ts'
-import skkDic from './SKK-JISYO.S.txt?raw'
+import skkDic from './SKK-JISYO.M.txt?raw'
 import luaSource from './main.lua?raw'
 
 let dict: { [key: string]: string[] } = {}
