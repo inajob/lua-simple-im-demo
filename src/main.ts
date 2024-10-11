@@ -41,7 +41,7 @@ try {
     lua.global.set('ksearch', (s:string) => {
       let out:string[] = []
       if(s in dict){
-        out = dict[s]
+        out = dict[s].slice()
       }
       return out
     })
