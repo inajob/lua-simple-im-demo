@@ -5,6 +5,7 @@ lines[#lines + 1] = {value="日本語 テスト", dirty=true}
 x = 1 -- cursor x
 y = 1 -- cursor y
 screenWidth = 800
+screenHeight = 480
 fontHeight = 16
 alldirty = true
 
@@ -433,6 +434,19 @@ function keydown(k, c, ctrl)
 end
 
 function drawIm()
+    local mstr = "[A]"
+    if imMode == M_DIRECT then
+        mstr = "[あ]"
+    elseif imMode == M_HENKAN then
+        mstr = "[変]"
+    elseif imMode == M_SELECT then
+        mstr = "[選]"
+    end
+    color(255,255,255)
+    fillrect(0, screenHeight - fontHeight, screenWidth, fontHeight)
+    color(0,0,0)
+    text(mstr, 0, screenHeight - fontHeight)
+
     if candidate == "" then
         return
     end
