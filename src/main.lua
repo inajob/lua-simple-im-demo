@@ -287,6 +287,11 @@ function setPos(x, y)
     return 1
 end
 
+function isAlphabet(char)
+    local byte = string.byte(char)
+    return (byte >= 65 and byte <= 90) or (byte >= 97 and byte <= 122)
+end
+
 function hira2kata(s)
     local out = ""
     for p,c in utf8.codes(s) do
@@ -305,6 +310,12 @@ function rome2kana(s)
     while index ~= string.len(s) + 1 do
         local hit = false
         for k,v in pairs(rome) do
+            local c = string.sub(s, index, index)
+            if not(isAlphabet(c)) then
+                out = out .. c
+                index = index + 1
+                break
+            end
             local i = string.find(s, k, index, true)
             if i == index then
                 out = out .. v
@@ -388,8 +399,7 @@ function keydown(k, c, ctrl)
         end
         drawIm()
     elseif string.len(c) == 1 and k ~= 13 and k ~= 32 then
-        local triggered = (string.upper(c) == c)
-        
+        local triggered = (string.upper(c) == c and isAlphabet(c))
         if imMode == M_SELECT then
             decide()
         end
