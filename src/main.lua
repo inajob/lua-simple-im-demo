@@ -11,10 +11,10 @@ function subChar(s, start, e)
     local counter = 1
     local r = ""
     for p, c in utf8.codes(s) do
-    if counter >= start and counter < e then
-        r = r .. utf8.char(c)
-    end
-    counter = counter + 1
+        if counter >= start and counter < e then
+            r = r .. utf8.char(c)
+        end
+        counter = counter + 1
     end
     return r
 end
@@ -23,26 +23,26 @@ function insertChar(s, i, t)
     local r = ""
     local counter = 1
     for p, c in utf8.codes(s) do
+        if counter == i then
+            r = r .. t
+        end
+        r = r .. utf8.char(c)
+        counter = counter + 1
+    end
     if counter == i then
         r = r .. t
-    end
-    r = r .. utf8.char(c)
-    counter = counter + 1
-    end
-    if counter == i then
-    r = r .. t
     end
     return r
 end
 function draw(setPos)
     local px = 0
     local py = 0
-    local cx = 0
+    local cx = 0 -- cursor pos
     local cy = 0
     local offset = 10
     if alldirty then
         color(255,255,255)
-        fillrect(0,0,400,400)
+        fillrect(0,0,800,480)
         alldirty = false
     end
     color(0,0,0)
@@ -54,7 +54,7 @@ function draw(setPos)
         end
         l["dirty"] = true
         color(255,255,255)
-        fillrect(0,py,400,fontHeight)
+        fillrect(0,py,800,fontHeight)
         -- text(">", 0, py)
         color(0,0,255)
         fillrect(0, py, 3, fontHeight)
@@ -83,7 +83,7 @@ function draw(setPos)
     end
 
     if setPos then
-    setPos(offset + cx, cy)
+        setPos(offset + cx, cy)
     end
 end
 
@@ -130,14 +130,14 @@ function keydown(k, c)
         if y > 1 then
             y = y - 1
             if x > utf8.len(lines[y]["value"]) + 1 then
-            x = utf8.len(lines[y]["value"]) + 1
+                x = utf8.len(lines[y]["value"]) + 1
             end
         end
     elseif k == 40 then -- ArrowDown
         if y < #lines then
             y = y + 1
             if x > utf8.len(lines[y]["value"]) + 1 then
-            x = utf8.len(lines[y]["value"]) + 1
+                x = utf8.len(lines[y]["value"]) + 1
             end
         end
     elseif string.len(key) == 1 or utf8.len(key) == 1 then
@@ -282,11 +282,11 @@ end
 function hira2kata(s)
     local out = ""
     for p,c in utf8.codes(s) do
-    if "ー" == utf8.char(c) then
-        out = out .. utf8.char(c)
-    else
-        out = out .. utf8.char(c + 96)
-    end
+        if "ー" == utf8.char(c) then
+            out = out .. utf8.char(c)
+        else
+            out = out .. utf8.char(c + 96)
+        end
     end
     return out
 end
@@ -295,34 +295,34 @@ function rome2kana(s)
     local out = ""
     local index = 1
     while index ~= string.len(s) + 1 do
-    local hit = false
-    for k,v in pairs(rome) do
-        local i = string.find(s, k, index, true)
-        if i == index then
-        out = out .. v
-        index = index + string.len(k)
-        hit = true
-        break
+        local hit = false
+        for k,v in pairs(rome) do
+            local i = string.find(s, k, index, true)
+            if i == index then
+                out = out .. v
+                index = index + string.len(k)
+                hit = true
+                break
+            end
         end
-    end
-    if not(hit) then
-        local n = string.sub(s, index, index)
-        if index < string.len(s) then
-        local m = string.sub(s, index + 1, index + 1)
-        if n == m then
-            out = out .. "っ"
-            index = index + 1
-            goto continue
+        if not(hit) then
+            local n = string.sub(s, index, index)
+            if index < string.len(s) then
+                local m = string.sub(s, index + 1, index + 1)
+                if n == m then
+                    out = out .. "っ"
+                    index = index + 1
+                    goto continue
+                end
+                if n == "n" then
+                    out = out .. "ん"
+                    index = index + 1
+                    goto continue
+                end
+            end
+            break -- can't convert hiragana
+            ::continue::
         end
-        if n == "n" then
-            out = out .. "ん"
-            index = index + 1
-            goto continue
-        end
-        end
-        break -- can't convert hiragana
-        ::continue::
-    end
     end
     return out, index
 end
@@ -402,8 +402,8 @@ function keydown(k, c, ctrl)
             table.insert(results, 1, hira)
         elseif not(triggered) then
             for p, c in utf8.codes(hira) do
-            local uc = utf8.char(c)
-            onCharHandler(0, uc)
+                local uc = utf8.char(c)
+                onCharHandler(0, uc)
             end
             candidate = string.sub(candidate, index)
         end
@@ -416,7 +416,7 @@ end
 
 function drawIm()
     if candidate == "" then
-    return
+        return
     end
     -- local hira, index = rome2kana(candidate)
     local w = textwidth(candidate)
@@ -426,23 +426,23 @@ function drawIm()
     text(candidate, cx, cy)
     local maxW = 0
     for i=1, #results do
-    local w = textwidth(results[i])
-    if maxW < w then
-        maxW = w
-    end
+        local w = textwidth(results[i])
+        if maxW < w then
+            maxW = w
+        end
     end
     color(20,20,20)
     fillrect(cx-1, cy+fontHeight-1, maxW+2, fontHeight*(#results)+2)
     color(240,240,240)
     fillrect(cx, cy+fontHeight, maxW, fontHeight*(#results))
     for i=1, #results do
-    if index == i then
-        color(0,0,255)
-        fillrect(cx, i * fontHeight + cy, maxW, fontHeight)
-        color(255,255,255)
-    else
-        color(0,0,0)
-    end
-    text(results[i], cx, i*fontHeight + cy)
+        if index == i then
+            color(0,0,255)
+            fillrect(cx, i * fontHeight + cy, maxW, fontHeight)
+            color(255,255,255)
+        else
+            color(0,0,0)
+        end
+        text(results[i], cx, i*fontHeight + cy)
     end
 end
