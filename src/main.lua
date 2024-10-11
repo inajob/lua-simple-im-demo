@@ -4,6 +4,7 @@ lines[#lines + 1] = {value="Hello World", dirty=true}
 lines[#lines + 1] = {value="日本語 テスト", dirty=true}
 x = 1 -- cursor x
 y = 1 -- cursor y
+screenWidth = 800
 fontHeight = 16
 alldirty = true
 
@@ -42,7 +43,7 @@ function draw(setPos)
     local offset = 10
     if alldirty then
         color(255,255,255)
-        fillrect(0,0,800,480)
+        fillrect(0,0,screenWidth,480)
         alldirty = false
     end
     color(0,0,0)
@@ -54,17 +55,24 @@ function draw(setPos)
         end
         l["dirty"] = true
         color(255,255,255)
-        fillrect(0,py,800,fontHeight)
-        -- text(">", 0, py)
+        fillrect(0,py,screenWidth,fontHeight)
+        -- left blue bar
         color(0,0,255)
         fillrect(0, py, 3, fontHeight)
         for p, c in utf8.codes(l["value"]) do
             local uc = utf8.char(c)
             if i == y and j == x then
+                -- cursor
                 color(0,0,0)
                 fillrect(offset + px, py, 1, fontHeight)
                 cx = px
                 cy = py
+            end
+            if px + textwidth(uc) > screenWidth then
+                px = 0
+                py = py + fontHeight
+                color(255,255,255)
+                fillrect(0,py,screenWidth,fontHeight)
             end
             color(0,0,0)
             text(uc, offset + px, py)
