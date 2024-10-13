@@ -406,27 +406,33 @@ function keydown(k, c, ctrl)
         end
         
         c = string.lower(c)
-        candidate = candidate .. c
-        local hira, index = rome2kana(candidate)
+        
         
         if imMode == M_HENKAN and triggered then
+            local hira, index = rome2kana(candidate)
+            
             debug("ksearch:" .. hira .. c)
             results = ksearch(hira .. c) -- SLOW
             table.insert(results, #results + 1, hira)
             imMode = M_SELECT
             nextCandidate = c
-        elseif triggered or imMode == M_HENKAN then
-            imMode = M_HENKAN
-            results = {}
-            table.insert(results, 1, hira)
-        elseif not(triggered) then
-            for p, c in utf8.codes(hira) do
-                local uc = utf8.char(c)
-                onCharHandler(0, uc)
+        else
+            candidate = candidate .. c
+            local hira, index = rome2kana(candidate)
+
+            if triggered or imMode == M_HENKAN then
+                -- first triggered or in HENKAN
+                imMode = M_HENKAN
+                results = {}
+                table.insert(results, 1, hira)
+            elseif not(triggered) then
+                for p, c in utf8.codes(hira) do
+                    local uc = utf8.char(c)
+                    onCharHandler(0, uc)
+                end
+                candidate = string.sub(candidate, index)
             end
-            candidate = string.sub(candidate, index)
         end
-        
         drawIm()
     else
         onCharHandler(k, c)
