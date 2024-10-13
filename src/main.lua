@@ -165,6 +165,7 @@ index = 1
 M_DIRECT = 0
 M_HENKAN = 1
 M_SELECT = 2
+M_HAN = 3
 imMode = M_DIRCET
 cx = 0
 cy = 0
@@ -288,9 +289,10 @@ function setPos(x, y)
     return 1
 end
 
+-- alphabet and hyphen
 function isAlphabet(char)
     local byte = string.byte(char)
-    return (byte >= 65 and byte <= 90) or (byte >= 97 and byte <= 122)
+    return byte == 45 or (byte >= 65 and byte <= 90) or (byte >= 97 and byte <= 122)
 end
 
 function hira2kata(s)
@@ -375,13 +377,13 @@ function keydown(k, c, ctrl)
     -- Enter == 13
     if k == 13 and string.len(candidate) > 0 then
         decide()
+        -- TODO: rome2kana(nextCandidate)
     -- Backspace = 8
     elseif k == 8 and string.len(candidate) > 0 then
         candidate = string.sub(candidate, 0, #candidate - 1)
         local hira = rome2kana(candidate)
         -- results = ksearch(hira)
         results = {}
-        table.insert(results, 1, hira2kata(hira))
         table.insert(results, 1, hira)
         alldirty = true
         draw()
@@ -391,6 +393,7 @@ function keydown(k, c, ctrl)
         local hira = rome2kana(candidate)
         results = ksearch(hira)
         table.insert(results, #results + 1, hira)
+        table.insert(results, #results + 1, hira2kata(hira))
         imMode = M_SELECT
         drawIm()
     elseif k == 32 and string.len(candidate) > 0 and imMode == M_SELECT then
@@ -399,38 +402,55 @@ function keydown(k, c, ctrl)
             index = 1
         end
         drawIm()
+    elseif c == 'l' then
+        imMode = M_HAN
+        drawIm()
+    elseif c == 'j' and ctrl then
+        imMode = M_DIRECT
+        drawIm()
+    elseif c == 'q' and imMode == M_HENKAN then
+        -- katakana
+        local hira = rome2kana(candidate)
+        local kata = hira2kata(hira)
+        results = {kata}
+        decide()
     elseif string.len(c) == 1 and k ~= 13 and k ~= 32 then
-        local triggered = (string.upper(c) == c and isAlphabet(c))
-        if imMode == M_SELECT then
-            decide()
-        end
-        
-        c = string.lower(c)
-        
-        
-        if imMode == M_HENKAN and triggered then
-            local hira, index = rome2kana(candidate)
-            
-            debug("ksearch:" .. hira .. c)
-            results = ksearch(hira .. c) -- SLOW
-            table.insert(results, #results + 1, hira)
-            imMode = M_SELECT
-            nextCandidate = c
+        if imMode == M_HAN then
+            onCharHandler(0, c)
         else
-            candidate = candidate .. c
-            local hira, index = rome2kana(candidate)
+            local triggered = (string.upper(c) == c and isAlphabet(c)) and c ~= "-"
+            if imMode == M_SELECT then
+                decide()
+            end
+            
+            c = string.lower(c)
+            
+            
+            if imMode == M_HENKAN and triggered then
+                local hira, index = rome2kana(candidate)
+                
+                debug("ksearch:" .. hira .. c)
+                results = ksearch(hira .. c) -- SLOW
+                table.insert(results, #results + 1, hira)
+                table.insert(results, #results + 1, hira2kata(hira))
+                imMode = M_SELECT
+                nextCandidate = c
+            else
+                candidate = candidate .. c
+                local hira, index = rome2kana(candidate)
 
-            if triggered or imMode == M_HENKAN then
-                -- first triggered or in HENKAN
-                imMode = M_HENKAN
-                results = {}
-                table.insert(results, 1, hira)
-            elseif not(triggered) then
-                for p, c in utf8.codes(hira) do
-                    local uc = utf8.char(c)
-                    onCharHandler(0, uc)
+                if triggered or imMode == M_HENKAN then
+                    -- first triggered or in HENKAN
+                    imMode = M_HENKAN
+                    results = {}
+                    table.insert(results, 1, hira)
+                elseif not(triggered) then
+                    for p, c in utf8.codes(hira) do
+                        local uc = utf8.char(c)
+                        onCharHandler(0, uc)
+                    end
+                    candidate = string.sub(candidate, index)
                 end
-                candidate = string.sub(candidate, index)
             end
         end
         drawIm()
@@ -447,6 +467,8 @@ function drawIm()
         mstr = "[変]"
     elseif imMode == M_SELECT then
         mstr = "[選]"
+    elseif imMode == M_HAN then
+        mstr = "[a]"
     end
     color(255,255,255)
     fillrect(0, screenHeight - fontHeight, screenWidth, fontHeight)
@@ -457,11 +479,11 @@ function drawIm()
         return
     end
     -- local hira, index = rome2kana(candidate)
-    local w = textwidth(candidate)
+    local w = textwidth(candidate .. nextCandidate)
     color(0,0,255)
     fillrect(cx, cy, w, fontHeight)
     color(255,255,255)
-    text(candidate, cx, cy)
+    text(candidate .. nextCandidate, cx, cy)
     local maxW = 0
     for i=1, #results do
         local w = textwidth(results[i])

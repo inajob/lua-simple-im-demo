@@ -7,7 +7,7 @@ import luaSource from './main.lua?raw'
 let dict: { [key: string]: string[] } = {}
 
 let gctx:CanvasRenderingContext2D | null = null;
-let luaKeydown: (k:number ,c:string) => Promise<void> |null;
+let luaKeydown: (k:number ,c:string, ctrl:boolean) => Promise<void> |null;
 
 (async () => {
 const factory = new LuaFactory()
@@ -46,11 +46,11 @@ try {
       return out
     })
 
-    luaKeydown = async (k:number ,c:string) => {
+    luaKeydown = async (k:number ,c:string, ctrl:boolean) => {
       const draw = lua.global.get('draw')
       draw()
       const onKeyHandler = lua.global.get('keydown')
-      onKeyHandler(k, c)
+      onKeyHandler(k, c, ctrl)
     }
     // Run a lua string
     await lua.doString(luaSource)
@@ -67,7 +67,7 @@ addEventListener("keydown", (e) => {
   if(e.key == "Shift"){
     return
   }
-  luaKeydown(e.keyCode, e.key)
+  luaKeydown(e.keyCode, e.key, e.ctrlKey)
   e.preventDefault()
 })
 addEventListener("load", () => {
