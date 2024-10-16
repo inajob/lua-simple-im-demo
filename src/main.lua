@@ -2,8 +2,10 @@
 lines = {}
 lines[#lines + 1] = {value="Hello World", dirty=true}
 lines[#lines + 1] = {value="日本語 テスト", dirty=true}
-x = 1 -- cursor x
-y = 1 -- cursor y
+x = 1 -- cursor x(row)
+y = 1 -- cursor y(row)
+
+scrollY = 0 -- scroll position in row
 screenWidth = 800
 screenHeight = 480
 fontHeight = 16
@@ -36,9 +38,10 @@ function insertChar(s, i, t)
     end
     return r
 end
+
 function draw(setPos)
-    local px = 0
-    local py = 0
+    local px = 0 -- (px)
+    local py = 0 -- (px)
     local cx = 0 -- cursor pos
     local cy = 0
     local offset = 10
@@ -49,6 +52,9 @@ function draw(setPos)
     end
     color(0,0,0)
     for i, l in pairs(lines) do
+        if i < scrollY or i - scrollY > screenHeight/fontHeight then
+            goto skip
+        end
         px = 0
         local j = 1
         if l["dirty"] == false then
@@ -89,6 +95,7 @@ function draw(setPos)
         end
         ::continue::
         py = py + fontHeight
+        ::skip::
     end
 
     if setPos then
@@ -142,12 +149,21 @@ function keydown(k, c)
                 x = utf8.len(lines[y]["value"]) + 1
             end
         end
+        if cy <= 0  and scrollY > 0 then
+            scrollY = scrollY - 1
+            alldirty = true
+        end
     elseif k == 40 then -- ArrowDown
         if y < #lines then
             y = y + 1
             if x > utf8.len(lines[y]["value"]) + 1 then
                 x = utf8.len(lines[y]["value"]) + 1
             end
+        end
+        if cy >= screenHeight - fontHeight * 2 then
+            debug("Y overflow "..scrollY)
+            scrollY = scrollY + 1
+            alldirty = true
         end
     elseif string.len(key) == 1 or utf8.len(key) == 1 then
         local line = lines[y]
@@ -167,8 +183,8 @@ M_HENKAN = 1
 M_SELECT = 2
 M_HAN = 3
 imMode = M_DIRCET
-cx = 0
-cy = 0
+cx = 0 -- (px)
+cy = 0 -- (px)
 
 rome = {}
 rome["a"] = "あ"
