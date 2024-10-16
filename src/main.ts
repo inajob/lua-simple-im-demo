@@ -30,6 +30,12 @@ try {
         return gctx.measureText(s).width
       }
     })
+    lua.global.set('screenwidth', (s:string) => {
+      return 800
+    })
+    lua.global.set('screenheight', (s:string) => {
+      return 480
+    })
     lua.global.set('fillrect', (x:number, y:number, w:number, h:number) => {
       if(gctx != null){
         gctx.fillRect(x, y, w, h)

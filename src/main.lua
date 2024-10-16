@@ -6,8 +6,8 @@ x = 1 -- cursor x(row)
 y = 1 -- cursor y(row)
 
 scrollY = 0 -- scroll position in row
-screenWidth = 800
-screenHeight = 480
+screenWidth = screenwidth()
+screenHeight = screenheight()
 fontHeight = 16
 alldirty = true
 
@@ -161,7 +161,6 @@ function keydown(k, c)
             end
         end
         if cy >= screenHeight - fontHeight * 2 then
-            debug("Y overflow "..scrollY)
             scrollY = scrollY + 1
             alldirty = true
         end
