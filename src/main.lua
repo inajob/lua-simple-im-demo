@@ -402,10 +402,10 @@ function keydown(k, c, ctrl)
             index = 1
         end
         drawIm()
-    elseif c == 'l' then
+    elseif c == 'l' and imMode == M_DIRECT then
         imMode = M_HAN
         drawIm()
-    elseif c == 'j' and ctrl then
+    elseif c == 'j' and ctrl  and imMode == M_HAN then
         imMode = M_DIRECT
         drawIm()
     elseif c == 'q' and imMode == M_HENKAN then
