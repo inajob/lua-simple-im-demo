@@ -3,14 +3,18 @@ import { LuaFactory } from 'wasmoon'
 //import {dict2} from './dict2.ts'
 import skkDic from './SKK-JISYO.M.txt?raw'
 import luaSource from './main.lua?raw'
+import skkSource from './skk.lua?raw'
 
 let dict: { [key: string]: string[] } = {}
 
 let gctx:CanvasRenderingContext2D | null = null;
 let luaKeydown: (k:number ,c:string, ctrl:boolean) => Promise<void> |null;
+let screenWidth = 320;
+let screenHeight = 240;
 
 (async () => {
 const factory = new LuaFactory()
+factory.mountFile("skk.lua", skkSource)
 const lua = await factory.createEngine()
 
 try {
@@ -31,10 +35,10 @@ try {
       }
     })
     lua.global.set('screenwidth', (s:string) => {
-      return 800
+      return screenWidth
     })
     lua.global.set('screenheight', (s:string) => {
-      return 480
+      return screenHeight
     })
     lua.global.set('fillrect', (x:number, y:number, w:number, h:number) => {
       if(gctx != null){
@@ -78,10 +82,10 @@ addEventListener("keydown", (e) => {
 })
 addEventListener("load", () => {
   let canv:HTMLCanvasElement = document.createElement("canvas")
-  canv.width = 800
-  canv.height = 480
-  canv.style.width = "800px"
-  canv.style.height = "480px"
+  canv.width = screenWidth
+  canv.height = screenHeight
+  canv.style.width = screenWidth + "px"
+  canv.style.height = screenHeight + "px"
   document.getElementById("app")?.appendChild(canv)
   
   let lines = skkDic.split("\n").filter((l) => (l.length > 0 && l[0] != ";")).map((l) => {
