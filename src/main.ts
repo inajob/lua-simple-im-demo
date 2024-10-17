@@ -6,6 +6,7 @@ import luaSource from './main.lua?raw'
 import skkSource from './skk.lua?raw'
 
 let dict: { [key: string]: string[] } = {}
+let fs: { [key: string]: string } = {}
 
 let gctx:CanvasRenderingContext2D | null = null;
 let luaKeydown: (k:number ,c:string, ctrl:boolean) => Promise<void> |null;
@@ -15,6 +16,7 @@ let screenHeight = 240;
 (async () => {
 const factory = new LuaFactory()
 factory.mountFile("skk.lua", skkSource)
+fs["test.txt"] = "hello world"
 const lua = await factory.createEngine()
 
 try {
@@ -48,6 +50,18 @@ try {
     lua.global.set('debug', (s:string) => {
       console.log(s)
     })
+    lua.global.set('getfiles', () => {
+      // パスの指定をサポートしていない
+      return Object.keys(fs)
+    })
+    lua.global.set('savefile', (fname:string, body:string) => {
+        fs[fname] = body
+    })
+    lua.global.set('readfile', (fname:string) => {
+      return fs[fname]
+    })
+    
+    
     lua.global.set('ksearch', (s:string) => {
       let out:string[] = []
       if(s in dict){

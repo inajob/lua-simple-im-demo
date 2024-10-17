@@ -11,6 +11,10 @@ screenHeight = screenheight()
 fontHeight = 16
 alldirty = true
 
+debug("== init ==")
+--debug(getfiles())
+--debug(readfile("test.txt"))
+
 function subChar(s, start, e)
     local counter = 1
     local r = ""
