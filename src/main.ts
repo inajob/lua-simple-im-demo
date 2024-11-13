@@ -47,10 +47,10 @@ let init = () => {
           return gctx.measureText(s).width
         }
       })
-      lua.global.set('screenwidth', (s:string) => {
+      lua.global.set('screenwidth', () => {
         return screenWidth
       })
-      lua.global.set('screenheight', (s:string) => {
+      lua.global.set('screenheight', () => {
         return screenHeight
       })
       lua.global.set('fillrect', (x:number, y:number, w:number, h:number) => {
