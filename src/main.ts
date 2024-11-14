@@ -1,7 +1,5 @@
 import './style.css'
 import { LuaEngine, LuaFactory } from 'wasmoon'
-//import {dict2} from './dict2.ts'
-import skkDic from './SKK-JISYO.M.txt?raw'
 import shellSource from './shell.lua?raw'
 import editSource from './main.lua?raw'
 import skkSource from './skk.lua?raw'
@@ -14,7 +12,7 @@ let luaKeydown: (k:number ,c:string, ctrl:boolean) => Promise<void> |null;
 let screenWidth = 320;
 let screenHeight = 240;
 let exitRequest = false;
-let fileName = "/shell.lua";
+let fileName = "/edit.lua";
 let fileNameStack:string[] = []
 let lua: LuaEngine;
 
@@ -134,23 +132,19 @@ addEventListener("keydown", (e) => {
   e.preventDefault()
 })
 addEventListener("load", () => {
+  fetch("https://raw.githubusercontent.com/skk-dev/dict/refs/heads/master/json/SKK-JISYO.M.json", {
+    method: "GET",
+  }).then(response => response.json())
+  .then(o => {
+    dict = { ...o.okuri_ari, ...o.okuri_nasi}
+  });
+  
   let canv:HTMLCanvasElement = document.createElement("canvas")
   canv.width = screenWidth
   canv.height = screenHeight
   canv.style.width = screenWidth + "px"
   canv.style.height = screenHeight + "px"
   document.getElementById("app")?.appendChild(canv)
-  
-  let lines = skkDic.split("\n").filter((l) => (l.length > 0 && l[0] != ";")).map((l) => {
-    let parts = l.split(" ")
-    let k = parts[0]
-    let v = parts[1].split("/").filter((l) => (l.length != 0))
-    return {k: k, v:v}
-  })
-  //console.log(lines)
-  lines.forEach((l) => {
-    dict[l.k] = l.v
-  })
 
   let ctx = canv.getContext("2d")
   if(ctx != null){
