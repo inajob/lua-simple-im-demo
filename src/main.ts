@@ -71,6 +71,9 @@ let init = () => {
       lua.global.set('readfile', (fname:string) => {
         return fs[fname]
       })
+      lua.global.set('getfreeheap', () => {
+        return -1
+      })
       
       lua.global.set('run', (fname: string) => {
         fileNameStack.push(fileName)
@@ -157,5 +160,6 @@ addEventListener("load", () => {
     ctx.fillRect(0,0,800,480)
 
     ctx.fillStyle = "black"
+    ctx.font = "12px San-serif"
   }
 })

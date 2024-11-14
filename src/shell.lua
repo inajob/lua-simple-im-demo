@@ -1,6 +1,6 @@
 screenWidth = screenwidth()
 screenHeight = screenheight()
-fontHeight = 16
+fontHeight = 12
 
 line = ""
 result = ""
@@ -56,6 +56,11 @@ function draw(setPos)
         text(result, 0, fontHeight * 2)
         dirty = false
     end
+
+    color(255,255,255)
+    fillrect(0, screenHeight - fontHeight*2, screenWidth, fontHeight*2)
+    color(0,0,0)
+    text(getfreeheap(), 0, screenHeight - fontHeight*2)
 
     setPos(w, 0)
 end
@@ -115,6 +120,10 @@ fillrect(0, 0, screenWidth, fontHeight)
 color(150,150,255)
 fillrect(2, 2, screenWidth - 4, fontHeight - 4)
 color(255,255,255)
-text("== Shell ==", 2, 2)
+text("Shell", fontHeight, 0)
+color(0,0,255)
+fillrect(2,2,fontHeight-4,fontHeight-4)
+color(255,255,255)
+fillrect(3,3,fontHeight-6,fontHeight-6)
 
 draw(setPos)
