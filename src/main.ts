@@ -154,6 +154,6 @@ addEventListener("load", () => {
     ctx.fillRect(0,0,800,480)
 
     ctx.fillStyle = "black"
-    ctx.font = "12px San-serif"
+    ctx.font = "11px San-serif"
   }
 })
