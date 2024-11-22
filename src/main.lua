@@ -1,11 +1,4 @@
 -- init
-lines = {}
-lines[#lines + 1] = {value="Hello World", dirty=true}
-lines[#lines + 1] = {value="日本語 テスト", dirty=true}
-x = 1 -- cursor x(row)
-y = 1 -- cursor y(row)
-
-scrollY = 0 -- scroll position in row
 screenWidth = screenwidth()
 screenHeight = screenheight()
 fontHeight = 12
@@ -14,125 +7,8 @@ debug("== init ==")
 --debug(getfiles())
 --debug(readfile("test.txt"))
 
-Alert = {}
-Alert.new = function(msg, handler)
-    local obj = {}
-    obj.msg = msg
-    obj.handler = handler
-    obj.draw = function(self)
-        local top = fontHeight
-        color(0,0,0)
-        fillrect(0,top - 1,screenWidth, fontHeight*1 + 2)
-        color(200,200,255)
-        fillrect(1,top, screenWidth - 2, fontHeight*1)
-        
-        -- title
-        color(0,0,0)        
-        text(self.msg, 10, top)
-    end
-    obj.keydown = function(self, k, c, ctrl)
-        local key = c
-        if k == 13 then -- Enter
-            self.handler()
-            return
-        elseif k == 27 then -- Esc
-            table.remove(windows)
-            local app = windows[#windows]
-            app.alldirty = true
-            app.draw(app, setPos)
-            return
-        end
-        self.draw(self)
-    end
-    return obj
-end
-
-Prompt = {}
-Prompt.new = function(msg, okHandler, cancelHandler)
-    local obj = {}
-    obj.line = ""
-    obj.x = 1
-    obj.msg = msg
-    obj.okHandler = okHandler
-    obj.cancelHandler = cancelHandler
-    obj.draw = function(self, setPos)
-        color(0,0,0)
-        fillrect(0,0,screenWidth, fontHeight * 2)
-        color(255,255,255)
-        fillrect(1,1,screenWidth - 2, fontHeight * 2 - 2)
-        color(200,200,255)
-        fillrect(1, 1,screenWidth - 2, fontHeight * 1 - 2)
-        
-        -- title
-        color(0,0,0)        
-        text(self.msg, 10, 1)
-        local offset = 2
-        local j = 1
-        local px = 0
-        local py = fontHeight
-        local cx = px
-        local cy = py
-        color(255, 255, 255)
-        for p, c in utf8.codes(self.line) do
-            local uc = utf8.char(c)
-            if j == self.x then
-                -- draw cursor
-                color(0,0,0)
-                fillrect(offset + px, py, 1, fontHeight - 1)
-                cx = offset + px
-                cy = py
-            end
-            if offset + px + textwidth(uc) > screenWidth then
-                px = 0
-                py = py + fontHeight
-                color(255,255,255)
-                fillrect(0,py,screenWidth,fontHeight)
-            end
-            color(0,0,0)
-            text(uc, offset + px, py)
-            px = px + textwidth(uc)
-            j = j + 1
-        end
-        if j == self.x then
-            -- draw cursor
-            color(0,0,0)
-            fillrect(offset + px, py, 1, fontHeight - 1)
-            cx = offset + px
-            cy = py
-        end
-        if setPos then
-            setPos(cx, cy)
-        end
-    end
-    obj.keydown = function(self, k, c, ctrl)
-        local key = c
-        if k == 13 then -- Enter
-            self.okHandler(self.line)
-            return
-        elseif k == 27 then -- Esc
-            self.cancelHandler()
-            return
-        elseif k == 8 then -- Backspace
-            if self.x ~= 1 then
-                self.line = subChar(self.line, 1, self.x - 1) .. subChar(self.line, self.x, utf8.len(self.line) + 1)
-                self.x = self.x - 1
-            end
-        elseif k == 37 then -- ArrowLeft
-            if self.x > 1 then
-                self.x = self.x - 1
-            end
-        elseif k == 39 then -- ArrowRight
-            if self.x <= utf8.len(self.line) then
-                self.x = self.x + 1
-            end
-        elseif string.len(key) == 1 or utf8.len(key) == 1 then
-            self.line = insertChar(self.line, self.x, key)
-            self.x = self.x + 1
-        end
-        self.draw(self, setPos)
-    end
-    return obj
-end
+require("alert")
+require("prompt")
 
 Editor = {}
 Editor.new = function()
@@ -144,6 +20,20 @@ Editor.new = function()
     obj.y = 1
     obj.scrollY = 0
     obj.alldirty = true
+    obj.getText = function(self)
+        local ls = {}
+        for i, l in pairs(self.lines) do
+            ls[#ls + 1] = l.value
+        end
+        return table.concat(ls, "\n")
+    end
+    obj.loadText = function(self, text)
+        local lines = {}
+        self.lines = {}
+        for line in text:gmatch("[^\n]+") do
+            self.lines[#self.lines + 1] = {value = line, dirty = true}
+        end
+    end
     obj.draw = function(self, setPos)
         local px = 0 -- (px)
         local py = 0 -- (px)
@@ -263,40 +153,41 @@ Editor.new = function()
             end
         elseif key == "q" and ctrl then
             exit()
-        elseif key == "s" and ctrl then
+        elseif key == "l" and ctrl then
             local prompt = Prompt.new(
-                "Save...",
+                "load...",
                 function(fileName)
                     table.remove(windows)
+                    local text = readfile(fileName)
+                    if text == nil then
+                        showAlert("Load Error! " .. fileName)
+                    else
+                        self:loadText(text)
+                    end
                     local app = windows[#windows]
-                    local alert = Alert.new("SAVE to " .. fileName, function()
-                        table.remove(windows)
-                        local app = windows[#windows]
-                        app.alldirty = true
-                        app:draw(setPos)
-                    end)
-                    windows[#windows + 1] = alert
-                    alert:draw(setPos)
+                    app.alldirty = true
+                    app:draw()
                 end,
                 function()
                     table.remove(windows)
                     local app = windows[#windows]
                     app.alldirty = true
-                    app:draw(setPos)
+                    app:draw()
                 end
             )
             windows[#windows + 1] = prompt
             prompt.draw(prompt, setPos)
             return
-        elseif key == "z" and ctrl then
-            local alert = Alert.new("てすと", function()
-                table.remove(windows)
-                local app = windows[#windows]
-                app.alldirty = true
-                app:draw(setPos)
+        elseif key == "s" and ctrl then
+            showPrompt("Save...", function(fileName)
+                local b = self:getText()
+                    debug("SAVE" .. b)
+                    savefile(fileName, b)
+                    showAlert("SAVE to " .. fileName)
             end)
-            windows[#windows + 1] = alert
-            alert.draw(alert, setPos)
+            return
+        elseif key == "z" and ctrl then
+            showAlert("てすと")
             return
         elseif string.len(key) == 1 or utf8.len(key) == 1 then
             local line = self.lines[self.y]
@@ -350,6 +241,35 @@ end
 
 editor = Editor.new()
 windows = {editor}
+
+function showAlert(msg)
+    local alert = Alert.new(msg, function()
+        table.remove(windows)
+        local app = windows[#windows]
+        app.alldirty = true
+        app:draw(setPos)
+    end)
+    windows[#windows + 1] = alert
+    alert:draw()
+end
+
+function showPrompt(msg, handler)
+    local prompt = Prompt.new(
+        msg,
+        function(text)
+            table.remove(windows)
+            handler(text)
+        end,
+        function()
+            table.remove(windows)
+            local app = windows[#windows]
+            app.alldirty = true
+            app:draw()
+        end
+    )
+    windows[#windows + 1] = prompt
+    prompt.draw(prompt, setPos)
+end
 
 function draw(setPos)
     for i, w in pairs(windows) do

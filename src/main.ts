@@ -3,6 +3,8 @@ import { LuaEngine, LuaFactory } from 'wasmoon'
 import shellSource from './shell.lua?raw'
 import editSource from './main.lua?raw'
 import skkSource from './skk.lua?raw'
+import alertSource from './alert.lua?raw'
+import promptSource from './prompt.lua?raw'
 
 let dict: { [key: string]: string[] } = {}
 let fs: { [key: string]: string } = {}
@@ -22,10 +24,14 @@ let init = () => {
   // mountしたファイルを後でJavaScriptから参照する方法がわからない
   factory.mountFile("skk.lua", skkSource)
   factory.mountFile("edit.lua", editSource)
+  factory.mountFile("alert.lua", alertSource)
+  factory.mountFile("prompt.lua", promptSource)
   fs["/test.txt"] = "hello world"
   fs["/skk.lua"] = skkSource
   fs["/shell.lua"] = shellSource
   fs["/edit.lua"] = editSource
+  fs["/alert.lua"] = alertSource
+  fs["/prompt.lua"] = promptSource
   lua = await factory.createEngine()
 
   try {
