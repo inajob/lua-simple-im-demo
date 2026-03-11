@@ -1,6 +1,6 @@
 screenWidth = screenwidth()
 screenHeight = screenheight()
-fontHeight = 12
+fontHeight = 16
 
 line = ""
 result = ""
@@ -62,7 +62,9 @@ function draw(setPos)
     color(0,0,0)
     text(getfreeheap(), 0, screenHeight - fontHeight*2)
 
-    setPos(w, 0)
+    if setPos then
+        setPos(w, 0)
+    end
 end
 
 function keydown(k, c)
@@ -91,13 +93,17 @@ function exec(line)
     if parts[1] == "ls" then
         local files = getfiles()
         for i=1, #files do
-            result = result .. files[i] .. " "
+            result = result .. files[i] .. ", "
         end
     elseif parts[1] == "edit" then
         result = "edit:"
         if #parts > 1 then
             result = result .. parts[2]
         end
+    elseif parts[1] == "off" then
+        backlight(false)
+    elseif parts[1] == "on" then
+        backlight(true)
     elseif parts[1] == "run" then
         if #parts > 1 then
             run(parts[2])

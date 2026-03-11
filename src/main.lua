@@ -1,7 +1,7 @@
 -- init
 screenWidth = screenwidth()
 screenHeight = screenheight()
-fontHeight = 12
+fontHeight = 16+2
 
 debug("== init ==")
 --debug(getfiles())
@@ -9,6 +9,18 @@ debug("== init ==")
 
 require("alert")
 require("prompt")
+json = require "json"
+function url_encode(str)
+    if str == nil then
+        return ""
+    end
+    str = tostring(str)
+    str = str:gsub("\n", "\r\n")
+    str = str:gsub("([^%w%-%.%_%~])", function(c)
+        return string.format("%%%02X", string.byte(c))
+    end)
+    return str
+end
 
 Editor = {}
 Editor.new = function()
@@ -30,7 +42,9 @@ Editor.new = function()
     obj.loadText = function(self, text)
         local lines = {}
         self.lines = {}
+        debug("loadText")
         for line in text:gmatch("[^\n]+") do
+            debug("load: " .. line)
             self.lines[#self.lines + 1] = {value = line, dirty = true}
         end
     end
@@ -43,7 +57,6 @@ Editor.new = function()
         if self.alldirty then
             color(255,255,255)
             fillrect(0,0,screenWidth,screenHeight)
-            self.alldirty = false
         end
         color(0,0,0)
         for i, l in pairs(self.lines) do
@@ -52,10 +65,10 @@ Editor.new = function()
             end
             px = 0
             local j = 1
-            if l["dirty"] == false then
+            if l["dirty"] == false and i ~= self.y and not(self.alldirty) then
                 goto continue
             end
-            l["dirty"] = true
+            l["dirty"] = false
             color(255,255,255)
             fillrect(0,py,screenWidth,fontHeight)
             if i == #self.lines then
@@ -95,7 +108,10 @@ Editor.new = function()
             py = py + fontHeight
             ::skip::
         end
-    
+        if self.alldirty then
+            self.alldirty = false
+        end
+        
         if setPos then
             setPos(offset + cx, cy)
         end
@@ -104,6 +120,7 @@ Editor.new = function()
         debug("keydown: " .. k .. "," .. c)
         local key = c
         if k == 13 then -- Enter
+            debug("enter")
             local line = self.lines[self.y]["value"]
             self.lines[self.y]["value"] = subChar(line, 1, self.x)
             self.lines[self.y]["dirty"] = true
@@ -111,9 +128,11 @@ Editor.new = function()
                 value = subChar(line, self.x, utf8.len(line) + 1),
                 dirty=true
             })
+            self.lines[#self.lines]["dirty"] = true
             self.x = 1
             self.y = self.y + 1
         elseif k == 8 then -- Backspace
+            debug("backspace")
             local line = self.lines[self.y]["value"]
             self.lines[self.y]["dirty"] = true
             if self.x == 1 then
@@ -122,6 +141,7 @@ Editor.new = function()
                     self.lines[self.y - 1]["value"] = self.lines[self.y - 1]["value"] .. self.lines[self.y]["value"]
                     self.lines[self.y]["value"] = ""
                     table.remove(self.lines, self.y)
+                    self.alldirty = true
                     self.y = self.y - 1
                     self.x = px
                 end
@@ -139,6 +159,7 @@ Editor.new = function()
             end
         elseif k == 38 then -- ArrowUp
             if self.y > 1 then
+                self.lines[self.y]["dirty"] = true
                 self.y = self.y - 1
                 if self.x > utf8.len(self.lines[self.y]["value"]) + 1 then
                     self.x = utf8.len(self.lines[self.y]["value"]) + 1
@@ -146,6 +167,7 @@ Editor.new = function()
             end
         elseif k == 40 then -- ArrowDown
             if self.y < #self.lines then
+                self.lines[self.y]["dirty"] = true
                 self.y = self.y + 1
                 if self.x > utf8.len(self.lines[self.y]["value"]) + 1 then
                     self.x = utf8.len(self.lines[self.y]["value"]) + 1
@@ -153,6 +175,24 @@ Editor.new = function()
             end
         elseif key == "q" and ctrl then
             exit()
+        elseif key == "w" and ctrl then
+            wifion()
+            showAlert("wifi")
+            return
+        elseif key == "c" and ctrl then
+            showAlert("wifi status:" .. wifistatus())
+            return
+        elseif key == "f" and ctrl then
+            out = fetch("ja.wikipedia.org", "/api/rest_v1/page/summary/" .. url_encode(self.lines[self.y]["value"]), function(out)
+                debug(out)
+                obj = json.decode(out)
+                showAlert("fetch:" .. obj["extract"])            
+            end)
+            return
+        elseif key == "d" and ctrl then
+            files = getfiles()
+            showAlert("files:" .. table.concat(files, "\n"))
+            return
         elseif key == "l" and ctrl then
             local prompt = Prompt.new(
                 "load...",

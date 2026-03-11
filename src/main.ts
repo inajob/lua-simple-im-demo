@@ -5,14 +5,15 @@ import editSource from './main.lua?raw'
 import skkSource from './skk.lua?raw'
 import alertSource from './alert.lua?raw'
 import promptSource from './prompt.lua?raw'
+import jsonSource from './json.lua?raw'
 
 let dict: { [key: string]: string[] } = {}
 let fs: { [key: string]: string } = {}
 
 let gctx:CanvasRenderingContext2D | null = null;
 let luaKeydown: (k:number ,c:string, ctrl:boolean) => Promise<void> |null;
-let screenWidth = 320;
-let screenHeight = 240;
+let screenWidth = 800;
+let screenHeight = 480;
 let exitRequest = false;
 let fileName = "/edit.lua";
 let fileNameStack:string[] = []
@@ -26,12 +27,15 @@ let init = () => {
   factory.mountFile("edit.lua", editSource)
   factory.mountFile("alert.lua", alertSource)
   factory.mountFile("prompt.lua", promptSource)
+  factory.mountFile("json.lua", jsonSource)
   fs["/test.txt"] = "hello world"
   fs["/skk.lua"] = skkSource
   fs["/shell.lua"] = shellSource
   fs["/edit.lua"] = editSource
   fs["/alert.lua"] = alertSource
   fs["/prompt.lua"] = promptSource
+  fs["/json.lua"] = jsonSource
+
   lua = await factory.createEngine()
 
   try {
@@ -74,6 +78,14 @@ let init = () => {
       })
       lua.global.set('readfile', (fname:string) => {
         return fs[fname]
+      })
+      lua.global.set('fetch', (host:string, path:string, callback: (text: string) => void) => {
+        (async () => {
+          let res = await fetch("http://" + host + path)
+          let out = await res.text()
+          console.log("fetch",out,callback)
+          callback(out)
+        })()
       })
       lua.global.set('getfreeheap', () => {
         return -1
@@ -160,6 +172,6 @@ addEventListener("load", () => {
     ctx.fillRect(0,0,800,480)
 
     ctx.fillStyle = "black"
-    ctx.font = "11px San-serif"
+    ctx.font = "16px San-serif"
   }
 })

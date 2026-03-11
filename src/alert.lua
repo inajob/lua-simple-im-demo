@@ -12,7 +12,26 @@ Alert.new = function(msg, handler)
         
         -- title
         color(0,0,0)        
-        text(self.msg, 10, top)
+        -- text(self.msg, 10, top)
+        local offset = 2
+        local px = 0
+        local py = fontHeight
+        local cx = px
+        local cy = py
+
+        for p, c in utf8.codes(self.msg) do
+            local uc = utf8.char(c)
+            if offset + px + textwidth(uc) > screenWidth then
+                px = 0
+                py = py + fontHeight
+                color(200,200,255)
+                fillrect(0,py,screenWidth,fontHeight)
+            end
+            color(0,0,0)
+            text(uc, offset + px, py)
+            px = px + textwidth(uc)
+        end
+
     end
     obj.keydown = function(self, k, c, ctrl)
         local key = c
