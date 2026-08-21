@@ -61,6 +61,8 @@ const setupMobile = (canv: HTMLCanvasElement) => {
 
   let prevVal = ""
   let composing = false
+  let enterComposes = false
+  let lastComposingKeyTime = -1e9
   const resetBuffer = () => {
     input.value = ""
     prevVal = ""
@@ -76,6 +78,7 @@ const setupMobile = (canv: HTMLCanvasElement) => {
   })
   input.addEventListener("blur", () => {
     composing = false
+    enterComposes = false
     resetBuffer()
     document.body.classList.remove("keyboard-open")
   })
@@ -111,7 +114,15 @@ const setupMobile = (canv: HTMLCanvasElement) => {
   input.addEventListener("compositionend", () => {
     composing = false
     syncFromValue()
+    const endsWithSpace = input.value.endsWith(" ")
     resetBuffer()
+    const recentKey = performance.now() - lastComposingKeyTime < 50
+    const commitEnter = enterComposes || (recentKey && !endsWithSpace)
+    enterComposes = false
+    if (commitEnter) {
+      sendKey(13, "Enter", ctrlSticky)
+      consumeCtrl()
+    }
   })
 
   input.addEventListener("input", () => {
@@ -119,7 +130,13 @@ const setupMobile = (canv: HTMLCanvasElement) => {
   })
 
   input.addEventListener("keydown", (e) => {
-    if (e.isComposing || e.keyCode === 229) return
+    if (e.isComposing || e.keyCode === 229) {
+      lastComposingKeyTime = performance.now()
+      if (e.key === "Enter" || e.keyCode === 13) {
+        enterComposes = true
+      }
+      return
+    }
     const k = e.keyCode
     if (k === 13 || k === 9 || k === 27 || (k >= 37 && k <= 40)) {
       e.preventDefault()
@@ -153,6 +170,7 @@ const setupMobile = (canv: HTMLCanvasElement) => {
     ctrlBtn?.classList.toggle("active", ctrlSticky)
   })
   mkBtn("Esc", () => { sendKey(27, "Escape", ctrlSticky); consumeCtrl() })
+  mkBtn("⏎", () => { sendKey(13, "Enter", ctrlSticky); consumeCtrl() })
   mkBtn("←", () => { sendKey(37, "ArrowLeft", ctrlSticky); consumeCtrl() })
   mkBtn("↑", () => { sendKey(38, "ArrowUp", ctrlSticky); consumeCtrl() })
   mkBtn("↓", () => { sendKey(40, "ArrowDown", ctrlSticky); consumeCtrl() })
