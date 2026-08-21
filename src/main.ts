@@ -59,7 +59,15 @@ const setupMobile = (canv: HTMLCanvasElement) => {
   app.appendChild(input)
   mobileInput = input
 
-  canv.addEventListener("pointerdown", () => {
+  let prevVal = ""
+  let composing = false
+  const resetBuffer = () => {
+    input.value = ""
+    prevVal = ""
+  }
+
+  canv.addEventListener("pointerdown", (ev) => {
+    ev.preventDefault()
     input.focus({ preventScroll: true })
   })
 
@@ -67,31 +75,62 @@ const setupMobile = (canv: HTMLCanvasElement) => {
     document.body.classList.add("keyboard-open")
   })
   input.addEventListener("blur", () => {
+    composing = false
+    resetBuffer()
     document.body.classList.remove("keyboard-open")
   })
 
+  const syncFromValue = () => {
+    const cur = input.value
+    let p = 0
+    while (p < prevVal.length && p < cur.length && prevVal[p] === cur[p]) p++
+    let so = prevVal.length
+    let sn = cur.length
+    while (so > p && sn > p && prevVal[so - 1] === cur[sn - 1]) {
+      so--
+      sn--
+    }
+    for (let i = p; i < so; i++) {
+      sendKey(8, "Backspace", ctrlSticky)
+      consumeCtrl()
+    }
+    for (let i = p; i < sn; i++) {
+      const ch = cur[i]
+      sendKey(ch.codePointAt(0) ?? 0, ch, ctrlSticky)
+      consumeCtrl()
+    }
+    prevVal = cur
+    if (!composing && cur.length > 128) {
+      resetBuffer()
+    }
+  }
+
+  input.addEventListener("compositionstart", () => {
+    composing = true
+  })
+  input.addEventListener("compositionend", () => {
+    composing = false
+    syncFromValue()
+    resetBuffer()
+  })
+
+  input.addEventListener("input", () => {
+    syncFromValue()
+  })
+
   input.addEventListener("keydown", (e) => {
+    if (e.isComposing || e.keyCode === 229) return
     const k = e.keyCode
-    if (k === 13 || k === 8 || k === 9 || k === 27 || (k >= 37 && k <= 40)) {
+    if (k === 13 || k === 9 || k === 27 || (k >= 37 && k <= 40)) {
       e.preventDefault()
       sendKey(k, e.key, e.ctrlKey || ctrlSticky)
       consumeCtrl()
-    }
-  })
-
-  input.addEventListener("beforeinput", (e) => {
-    e.preventDefault()
-    const ctrl = (e as InputEvent & { ctrlKey?: boolean }).ctrlKey || ctrlSticky
-    if (e.inputType === "insertText" && e.data) {
-      for (const ch of e.data) {
-        sendKey(ch.codePointAt(0) ?? 0, ch, ctrl)
-        consumeCtrl()
+      if (k === 13) {
+        resetBuffer()
       }
-    } else if (e.inputType === "insertLineBreak") {
-      sendKey(13, "Enter", ctrl)
-      consumeCtrl()
-    } else if (e.inputType === "deleteContentBackward") {
-      sendKey(8, "Backspace", ctrl)
+    } else if (k === 8 && !composing) {
+      e.preventDefault()
+      sendKey(8, "Backspace", e.ctrlKey || ctrlSticky)
       consumeCtrl()
     }
   })
