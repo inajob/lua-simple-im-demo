@@ -62,6 +62,7 @@ const setupMobile = (canv: HTMLCanvasElement) => {
   let prevVal = ""
   let composing = false
   let enterComposes = false
+  let lastChanged = false
   const resetBuffer = () => {
     input.value = ""
     prevVal = ""
@@ -78,6 +79,7 @@ const setupMobile = (canv: HTMLCanvasElement) => {
   input.addEventListener("blur", () => {
     composing = false
     enterComposes = false
+    lastChanged = false
     resetBuffer()
     document.body.classList.remove("keyboard-open")
   })
@@ -101,6 +103,9 @@ const setupMobile = (canv: HTMLCanvasElement) => {
       sendKey(ch.codePointAt(0) ?? 0, ch, ctrlSticky)
       consumeCtrl()
     }
+    if (so > p || sn > p) {
+      lastChanged = true
+    }
     prevVal = cur
     if (!composing && cur.length > 128) {
       resetBuffer()
@@ -114,9 +119,10 @@ const setupMobile = (canv: HTMLCanvasElement) => {
     composing = false
     syncFromValue()
     const committedAscii = /^[\x20-\x7e]*$/.test(input.value)
-    resetBuffer()
-    const commitEnter = enterComposes && committedAscii
+    const commitEnter = committedAscii && (enterComposes || !lastChanged)
+    lastChanged = false
     enterComposes = false
+    resetBuffer()
     if (commitEnter) {
       sendKey(13, "Enter", ctrlSticky)
       consumeCtrl()
@@ -129,6 +135,7 @@ const setupMobile = (canv: HTMLCanvasElement) => {
 
   input.addEventListener("keydown", (e) => {
     if (e.isComposing || e.keyCode === 229) {
+      lastChanged = false
       if (e.key === "Enter" || e.keyCode === 13) {
         enterComposes = true
       }
