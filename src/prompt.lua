@@ -80,7 +80,7 @@ Prompt.new = function(msg, okHandler, cancelHandler)
             self.line = insertChar(self.line, self.x, key)
             self.x = self.x + 1
         end
-        self.draw(self)
-    end
-    return obj
-end
+        self:draw()
+        end
+        return obj
+        end

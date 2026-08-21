@@ -273,7 +273,7 @@ function keydown(k, c, ctrl)
         local kata = hira2kata(hira)
         results = {kata}
         decide()
-    elseif string.len(c) == 1 and k ~= 13 and k ~= 32 and not(ctrl) then
+    elseif string.len(c) == 1 and k ~= 13 and k ~= 32 and k ~= 8 and not(ctrl) then
         if imMode == M_HAN then
             onCharHandler(0, c, ctrl)
         else

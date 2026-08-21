@@ -39,13 +39,10 @@ Alert.new = function(msg, handler)
             self.handler()
             return
         elseif k == 27 then -- Esc
-            table.remove(windows)
-            local app = windows[#windows]
-            app.alldirty = true
-            app.draw(app, setPos)
+            popProcess()
             return
         end
-        self.draw(self)
+        self:draw()
     end
     return obj
 end
