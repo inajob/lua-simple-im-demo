@@ -62,7 +62,6 @@ const setupMobile = (canv: HTMLCanvasElement) => {
   let prevVal = ""
   let composing = false
   let enterComposes = false
-  let lastComposingKeyTime = -1e9
   const resetBuffer = () => {
     input.value = ""
     prevVal = ""
@@ -114,10 +113,9 @@ const setupMobile = (canv: HTMLCanvasElement) => {
   input.addEventListener("compositionend", () => {
     composing = false
     syncFromValue()
-    const endsWithSpace = input.value.endsWith(" ")
+    const committedAscii = /^[\x20-\x7e]*$/.test(input.value)
     resetBuffer()
-    const recentKey = performance.now() - lastComposingKeyTime < 50
-    const commitEnter = enterComposes || (recentKey && !endsWithSpace)
+    const commitEnter = enterComposes && committedAscii
     enterComposes = false
     if (commitEnter) {
       sendKey(13, "Enter", ctrlSticky)
@@ -131,7 +129,6 @@ const setupMobile = (canv: HTMLCanvasElement) => {
 
   input.addEventListener("keydown", (e) => {
     if (e.isComposing || e.keyCode === 229) {
-      lastComposingKeyTime = performance.now()
       if (e.key === "Enter" || e.keyCode === 13) {
         enterComposes = true
       }
