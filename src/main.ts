@@ -142,6 +142,12 @@ const setupMobile = (canv: HTMLCanvasElement) => {
       return
     }
     const k = e.keyCode
+    if (e.ctrlKey) {
+      e.preventDefault()
+      sendKey(k, e.key, true)
+      consumeCtrl()
+      return
+    }
     if (k === 13 || k === 9 || k === 27 || (k >= 37 && k <= 40)) {
       e.preventDefault()
       sendKey(k, e.key, e.ctrlKey || ctrlSticky)
