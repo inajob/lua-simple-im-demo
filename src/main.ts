@@ -88,22 +88,16 @@ const setupMobile = (canv: HTMLCanvasElement) => {
     const cur = input.value
     let p = 0
     while (p < prevVal.length && p < cur.length && prevVal[p] === cur[p]) p++
-    let so = prevVal.length
-    let sn = cur.length
-    while (so > p && sn > p && prevVal[so - 1] === cur[sn - 1]) {
-      so--
-      sn--
-    }
-    for (let i = p; i < so; i++) {
+    for (let i = p; i < prevVal.length; i++) {
       sendKey(8, "Backspace", ctrlSticky)
       consumeCtrl()
     }
-    for (let i = p; i < sn; i++) {
+    for (let i = p; i < cur.length; i++) {
       const ch = cur[i]
       sendKey(ch.codePointAt(0) ?? 0, ch, ctrlSticky)
       consumeCtrl()
     }
-    if (so > p || sn > p) {
+    if (p < prevVal.length || p < cur.length) {
       lastChanged = true
     }
     prevVal = cur
